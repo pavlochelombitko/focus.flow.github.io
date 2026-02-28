@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus Flow — Study Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root {
+    --transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ── Dark Theme ── */
+  [data-theme="dark"] {
+    --bg-primary: #0a0e1a;
+    --bg-secondary: #111827;
+    --bg-card: rgba(17, 24, 39, 0.7);
+    --bg-card-hover: rgba(22, 31, 48, 0.85);
+    --text-primary: #f0f4ff;
+    --text-secondary: #8892a8;
+    --text-muted: #4b5563;
+    --accent: #06d6a0;
+    --accent-glow: rgba(6, 214, 160, 0.25);
+    --accent-dim: rgba(6, 214, 160, 0.08);
+    --danger: #ef4444;
+    --danger-glow: rgba(239, 68, 68, 0.2);
+    --border: rgba(255,255,255,0.06);
+    --ring-track: rgba(255,255,255,0.05);
+    --ring-fill: var(--accent);
+    --shadow: 0 24px 80px rgba(0,0,0,0.5);
+    --noise-opacity: 0.03;
+    --glow-opacity: 1;
+  }
+
+  /* ── Light Theme ── */
+  [data-theme="light"] {
+    --bg-primary: #f5f7fb;
+    --bg-secondary: #ffffff;
+    --bg-card: rgba(255, 255, 255, 0.85);
+    --bg-card-hover: rgba(255, 255, 255, 0.95);
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --accent: #059669;
+    --accent-glow: rgba(5, 150, 105, 0.15);
+    --accent-dim: rgba(5, 150, 105, 0.06);
+    --danger: #dc2626;
+    --danger-glow: rgba(220, 38, 38, 0.12);
+    --border: rgba(0,0,0,0.08);
+    --ring-track: rgba(0,0,0,0.06);
+    --ring-fill: var(--accent);
+    --shadow: 0 24px 80px rgba(0,0,0,0.08);
+    --noise-opacity: 0.015;
+    --glow-opacity: 0;
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: background var(--transition), color var(--transition);
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ── Ambient Background ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 600px 400px at 20% 20%, var(--accent-glow), transparent),
+      radial-gradient(ellipse 500px 500px at 80% 80%, var(--accent-dim), transparent);
+    opacity: var(--glow-opacity);
+    pointer-events: none;
+    transition: opacity var(--transition);
+    z-index: 0;
+  }
+
+  /* ── Grain Overlay ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: var(--noise-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 128px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    padding: 2rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.75rem;
+    flex: 1;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+  .logo span { color: var(--accent); }
+
+  .theme-toggle {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    cursor: pointer;
+    display: grid; place-items: center;
+    transition: all var(--transition);
+    color: var(--text-secondary);
+  }
+  .theme-toggle:hover {
+    background: var(--bg-card-hover);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .theme-toggle svg { width: 20px; height: 20px; }
+
+  /* ── Mode Tabs ── */
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 4px;
+    width: 100%;
+  }
+  .mode-tab {
+    flex: 1;
+    padding: 0.6rem 0.5rem;
+    border: none;
+    background: transparent;
+    border-radius: 10px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+  }
+  .mode-tab.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 12px var(--accent-glow);
+  }
+  .mode-tab:not(.active):hover { color: var(--text-primary); }
+  .mode-tab .tab-time {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    margin-top: 2px;
+    opacity: 0.7;
+  }
+
+  /* ── Timer Ring ── */
+  .timer-container {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .timer-ring {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+  }
+  .timer-ring circle {
+    fill: none;
+    stroke-width: 4;
+    cx: 140;
+    cy: 140;
+    r: 134;
+  }
+  .ring-track { stroke: var(--ring-track); }
+  .ring-fill {
+    stroke: var(--ring-fill);
+    stroke-linecap: round;
+    stroke-dasharray: 842.03;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease;
+    filter: drop-shadow(0 0 8px var(--accent-glow));
+  }
+  .ring-fill.break-mode { stroke: #f59e0b; filter: drop-shadow(0 0 8px rgba(245,158,11,0.3)); }
+
+  .timer-display {
+    text-align: center;
+    user-select: none;
+  }
+  .timer-time {
+    font-family: 'Space Mono', monospace;
+    font-size: 3.8rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+  .timer-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+
+  /* Pulse when running */
+  .timer-container.running .timer-time {
+    animation: softPulse 2s ease-in-out infinite;
+  }
+  @keyframes softPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  /* ── Session Counter ── */
+  .sessions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .session-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: all 0.3s ease;
+  }
+  .session-dot.filled {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+  }
+  .session-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: 6px;
+    font-weight: 500;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .btn {
+    border: none;
+    border-radius: 14px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary {
+    padding: 0.9rem 2.5rem;
+    font-size: 1rem;
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 20px var(--accent-glow);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px var(--accent-glow);
+  }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    width: 48px; height: 48px;
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .btn-secondary:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: var(--danger-glow);
+  }
+  .btn-secondary svg { width: 18px; height: 18px; }
+
+  /* ── Custom Time Panel ── */
+  .custom-panel {
+    width: 100%;
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+    display: none;
+    animation: slideUp 0.3s ease;
+  }
+  .custom-panel.open { display: block; }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .panel-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+  }
+  .input-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 1rem;
+  }
+  .input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .input-group label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .input-group input {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .input-group input:focus { border-color: var(--accent); }
+
+  .btn-apply {
+    width: 100%;
+    padding: 0.7rem;
+    font-size: 0.85rem;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid transparent;
+  }
+  .btn-apply:hover {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* ── Sound Selector ── */
+  .sound-section {
+    width: 100%;
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+  }
+  .sound-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 0.75rem;
+  }
+  .sound-chip {
+    padding: 0.4rem 0.85rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .sound-chip.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .sound-chip:hover:not(.active) {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+  }
+  .btn-test {
+    background: transparent;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 0;
+    transition: color 0.2s;
+  }
+  .btn-test:hover { color: var(--accent); }
+
+  /* Volume slider */
+  .volume-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 0.75rem;
+  }
+  .volume-row svg { width: 16px; height: 16px; color: var(--text-muted); flex-shrink: 0; }
+  .volume-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--ring-track);
+    outline: none;
+  }
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 6px var(--accent-glow);
+  }
+  .volume-slider::-moz-range-thumb {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: none;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    width: 100%;
+    max-width: 480px;
+    padding: 1.5rem 1.25rem;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+  .footer a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: color 0.25s;
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+  }
+  .footer a:hover {
+    color: var(--accent);
+    border-color: var(--border);
+    background: var(--bg-card);
+  }
+  .footer a svg { width: 16px; height: 16px; }
+
+  /* ── Custom Toggle ── */
+  .custom-toggle {
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 0.5rem 1rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .custom-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 400px) {
+    .timer-container { width: 240px; height: 240px; }
+    .timer-ring circle { cx: 120; cy: 120; r: 114; }
+    .ring-fill, .ring-track { stroke-width: 3.5; }
+    .timer-time { font-size: 3rem; }
+    .btn-primary { padding: 0.8rem 2rem; }
+  }
+
+  /* ── Finish animation ── */
+  @keyframes celebrate {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  .timer-container.finished {
+    animation: celebrate 0.5s ease 3;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">focus<span>.</span>flow</div>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+      <svg id="iconSun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg id="iconMoon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+
+  <!-- Mode Tabs -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" data-work="25" data-break="5" onclick="selectPreset(this)">
+      Pomodoro<span class="tab-time">25 / 5</span>
+    </button>
+    <button class="mode-tab" data-work="20" data-break="5" onclick="selectPreset(this)">
+      Short<span class="tab-time">20 / 5</span>
+    </button>
+    <button class="mode-tab" data-work="30" data-break="10" onclick="selectPreset(this)">
+      Deep<span class="tab-time">30 / 10</span>
+    </button>
+    <button class="mode-tab" data-work="15" data-break="3" onclick="selectPreset(this)">
+      Sprint<span class="tab-time">15 / 3</span>
+    </button>
+  </div>
+
+  <!-- Timer -->
+  <div class="timer-container" id="timerContainer">
+    <svg class="timer-ring" viewBox="0 0 280 280">
+      <circle class="ring-track"/>
+      <circle class="ring-fill" id="ringFill"/>
+    </svg>
+    <div class="timer-display">
+      <div class="timer-time" id="timerTime">25:00</div>
+      <div class="timer-label" id="timerLabel">Focus Time</div>
+    </div>
+  </div>
+
+  <!-- Sessions -->
+  <div class="sessions">
+    <div class="session-dot" id="dot0"></div>
+    <div class="session-dot" id="dot1"></div>
+    <div class="session-dot" id="dot2"></div>
+    <div class="session-dot" id="dot3"></div>
+    <span class="session-label" id="sessionLabel">0 / 4 sessions</span>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn btn-secondary" id="resetBtn" aria-label="Reset" onclick="resetTimer()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+    </button>
+    <button class="btn btn-primary" id="startBtn" onclick="toggleTimer()">
+      <svg id="playIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <svg id="pauseIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      <span id="startLabel">Start</span>
+    </button>
+    <button class="btn btn-secondary" id="skipBtn" aria-label="Skip" onclick="skipPhase()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+    </button>
+  </div>
+
+  <!-- Custom Time Toggle -->
+  <button class="custom-toggle" onclick="toggleCustomPanel()">⚙ Custom Duration</button>
+
+  <!-- Custom Time Panel -->
+  <div class="custom-panel" id="customPanel">
+    <div class="panel-title">Set Custom Duration</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>Focus (min)</label>
+        <input type="number" id="customWork" min="1" max="120" value="25">
+      </div>
+      <div class="input-group">
+        <label>Break (min)</label>
+        <input type="number" id="customBreak" min="1" max="30" value="5">
+      </div>
+    </div>
+    <button class="btn btn-apply" onclick="applyCustom()">Apply</button>
+  </div>
+
+  <!-- Sound Selector -->
+  <div class="sound-section">
+    <div class="panel-title">Alarm Sound</div>
+    <div class="sound-options">
+      <button class="sound-chip active" data-sound="bell" onclick="selectSound(this)">🔔 Bell</button>
+      <button class="sound-chip" data-sound="chime" onclick="selectSound(this)">✨ Chime</button>
+      <button class="sound-chip" data-sound="synth" onclick="selectSound(this)">🎵 Synth</button>
+      <button class="sound-chip" data-sound="ping" onclick="selectSound(this)">📢 Ping</button>
+      <button class="sound-chip" data-sound="calm" onclick="selectSound(this)">🌊 Calm</button>
+    </div>
+    <button class="btn-test" onclick="testSound()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      Test Sound
+    </button>
+    <div class="volume-row">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="60">
+    </div>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <a href="https://www.instagram.com/pavyel_/" target="_blank" rel="noopener noreferrer">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+    @pavyel_
+  </a>
+</div>
+
+<script>
+  // ── State ──
+  let workMinutes = 25;
+  let breakMinutes = 5;
+  let totalSeconds = workMinutes * 60;
+  let remainingSeconds = totalSeconds;
+  let isRunning = false;
+  let isBreak = false;
+  let interval = null;
+  let sessions = 0;
+  let selectedSound = 'bell';
+
+  const CIRCUMFERENCE = 2 * Math.PI * 134;
+
+  // ── Elements ──
+  const timerTime = document.getElementById('timerTime');
+  const timerLabel = document.getElementById('timerLabel');
+  const timerContainer = document.getElementById('timerContainer');
+  const ringFill = document.getElementById('ringFill');
+  const startBtn = document.getElementById('startBtn');
+  const startLabel = document.getElementById('startLabel');
+  const playIcon = document.getElementById('playIcon');
+  const pauseIcon = document.getElementById('pauseIcon');
+  const sessionLabel = document.getElementById('sessionLabel');
+
+  // Init ring
+  ringFill.style.strokeDasharray = CIRCUMFERENCE;
+  ringFill.style.strokeDashoffset = '0';
+
+  // ── Format ──
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+
+  // ── Update Display ──
+  function updateDisplay() {
+    timerTime.textContent = formatTime(remainingSeconds);
+    const progress = 1 - (remainingSeconds / totalSeconds);
+    ringFill.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+    document.title = `${formatTime(remainingSeconds)} — Focus Flow`;
+  }
+
+  // ── Select Preset ──
+  function selectPreset(el) {
+    if (isRunning) return;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    workMinutes = parseInt(el.dataset.work);
+    breakMinutes = parseInt(el.dataset.break);
+    isBreak = false;
+    totalSeconds = workMinutes * 60;
+    remainingSeconds = totalSeconds;
+    ringFill.classList.remove('break-mode');
+    timerLabel.textContent = 'Focus Time';
+    updateDisplay();
+  }
+
+  // ── Toggle Timer ──
+  function toggleTimer() {
+    if (isRunning) {
+      pauseTimer();
+    } else {
+      startTimer();
+    }
+  }
+
+  function startTimer() {
+    isRunning = true;
+    timerContainer.classList.add('running');
+    timerContainer.classList.remove('finished');
+    startLabel.textContent = 'Pause';
+    playIcon.style.display = 'none';
+    pauseIcon.style.display = 'block';
+
+    interval = setInterval(() => {
+      remainingSeconds--;
+      updateDisplay();
+      if (remainingSeconds <= 0) {
+        clearInterval(interval);
+        isRunning = false;
+        timerContainer.classList.remove('running');
+        timerContainer.classList.add('finished');
+        playAlarm();
+
+        if (!isBreak) {
+          sessions++;
+          updateSessions();
+          // Switch to break
+          isBreak = true;
+          totalSeconds = breakMinutes * 60;
+          remainingSeconds = totalSeconds;
+          ringFill.classList.add('break-mode');
+          timerLabel.textContent = 'Break Time';
+        } else {
+          // Switch to work
+          isBreak = false;
+          totalSeconds = workMinutes * 60;
+          remainingSeconds = totalSeconds;
+          ringFill.classList.remove('break-mode');
+          timerLabel.textContent = 'Focus Time';
+        }
+        updateDisplay();
+        startLabel.textContent = 'Start';
+        playIcon.style.display = 'block';
+        pauseIcon.style.display = 'none';
+      }
+    }, 1000);
+  }
+
+  function pauseTimer() {
+    clearInterval(interval);
+    isRunning = false;
+    timerContainer.classList.remove('running');
+    startLabel.textContent = 'Start';
+    playIcon.style.display = 'block';
+    pauseIcon.style.display = 'none';
+  }
+
+  function resetTimer() {
+    clearInterval(interval);
+    isRunning = false;
+    isBreak = false;
+    timerContainer.classList.remove('running','finished');
+    totalSeconds = workMinutes * 60;
+    remainingSeconds = totalSeconds;
+    ringFill.classList.remove('break-mode');
+    timerLabel.textContent = 'Focus Time';
+    startLabel.textContent = 'Start';
+    playIcon.style.display = 'block';
+    pauseIcon.style.display = 'none';
+    updateDisplay();
+  }
+
+  function skipPhase() {
+    clearInterval(interval);
+    isRunning = false;
+    timerContainer.classList.remove('running');
+
+    if (!isBreak) {
+      sessions++;
+      updateSessions();
+      isBreak = true;
+      totalSeconds = breakMinutes * 60;
+      remainingSeconds = totalSeconds;
+      ringFill.classList.add('break-mode');
+      timerLabel.textContent = 'Break Time';
+    } else {
+      isBreak = false;
+      totalSeconds = workMinutes * 60;
+      remainingSeconds = totalSeconds;
+      ringFill.classList.remove('break-mode');
+      timerLabel.textContent = 'Focus Time';
+    }
+    startLabel.textContent = 'Start';
+    playIcon.style.display = 'block';
+    pauseIcon.style.display = 'none';
+    updateDisplay();
+  }
+
+  function updateSessions() {
+    for (let i = 0; i < 4; i++) {
+      document.getElementById('dot' + i).classList.toggle('filled', i < (sessions % 4 || (sessions > 0 && sessions % 4 === 0 ? 4 : 0)));
+    }
+    // Simpler: fill dots based on sessions mod 4
+    const filled = sessions % 4 === 0 && sessions > 0 ? 4 : sessions % 4;
+    for (let i = 0; i < 4; i++) {
+      document.getElementById('dot' + i).classList.toggle('filled', i < filled);
+    }
+    sessionLabel.textContent = `${sessions} session${sessions !== 1 ? 's' : ''} completed`;
+    // Reset dots after showing all 4
+    if (filled === 4) {
+      setTimeout(() => {
+        for (let i = 0; i < 4; i++) document.getElementById('dot' + i).classList.remove('filled');
+      }, 2000);
+    }
+  }
+
+  // ── Custom Panel ──
+  function toggleCustomPanel() {
+    document.getElementById('customPanel').classList.toggle('open');
+  }
+
+  function applyCustom() {
+    if (isRunning) return;
+    const w = parseInt(document.getElementById('customWork').value) || 25;
+    const b = parseInt(document.getElementById('customBreak').value) || 5;
+    workMinutes = Math.max(1, Math.min(120, w));
+    breakMinutes = Math.max(1, Math.min(30, b));
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    isBreak = false;
+    totalSeconds = workMinutes * 60;
+    remainingSeconds = totalSeconds;
+    ringFill.classList.remove('break-mode');
+    timerLabel.textContent = 'Focus Time';
+    updateDisplay();
+    document.getElementById('customPanel').classList.remove('open');
+  }
+
+  // ── Theme Toggle ──
+  const themeToggle = document.getElementById('themeToggle');
+  const iconSun = document.getElementById('iconSun');
+  const iconMoon = document.getElementById('iconMoon');
+
+  function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
+      iconSun.style.display = 'none';
+      iconMoon.style.display = 'block';
+    } else {
+      iconSun.style.display = 'block';
+      iconMoon.style.display = 'none';
+    }
+    try { localStorage.setItem('ff-theme', theme); } catch(e) {}
+  }
+
+  themeToggle.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  });
+
+  // Load saved theme
+  try {
+    const saved = localStorage.getItem('ff-theme');
+    if (saved) setTheme(saved);
+  } catch(e) {}
+
+  // ── Sound Engine (Web Audio API) ──
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function getVolume() {
+    return (parseInt(document.getElementById('volumeSlider').value) || 60) / 100;
+  }
+
+  const sounds = {
+    bell(ctx, vol) {
+      // Rich bell: two layered sine waves with decay
+      [523.25, 659.25].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol * 0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.12);
+        osc.stop(ctx.currentTime + 1.8);
+      });
+    },
+    chime(ctx, vol) {
+      // Ascending chime notes
+      [784, 988, 1175, 1318].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol * 0.35, ctx.currentTime + i * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.18 + 0.8);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.18);
+        osc.stop(ctx.currentTime + i * 0.18 + 1);
+      });
+    },
+    synth(ctx, vol) {
+      // Warm synth pad with vibrato
+      const osc = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc2.type = 'sawtooth';
+      osc.frequency.value = 440;
+      osc2.frequency.value = 441.5;
+      gain.gain.setValueAtTime(vol * 0.3, ctx.currentTime);
+      gain.gain.setValueAtTime(vol * 0.35, ctx.currentTime + 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+      osc.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(); osc2.start();
+      osc.stop(ctx.currentTime + 2.2);
+      osc2.stop(ctx.currentTime + 2.2);
+    },
+    ping(ctx, vol) {
+      // Sharp, attention-grabbing pings
+      for (let i = 0; i < 3; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = 1047;
+        gain.gain.setValueAtTime(vol * 0.2, ctx.currentTime + i * 0.25);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.25 + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.25);
+        osc.stop(ctx.currentTime + i * 0.25 + 0.2);
+      }
+    },
+    calm(ctx, vol) {
+      // Soft ocean-like wash using filtered noise + gentle tone
+      const bufferSize = ctx.sampleRate * 2;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 600;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(vol * 0.25, ctx.currentTime + 0.5);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.5);
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start();
+      noise.stop(ctx.currentTime + 3);
+      // Add gentle tone
+      const osc = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 396;
+      g2.gain.setValueAtTime(0, ctx.currentTime);
+      g2.gain.linearRampToValueAtTime(vol * 0.15, ctx.currentTime + 0.3);
+      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.5);
+      osc.connect(g2);
+      g2.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 3);
+    }
+  };
+
+  function playAlarm() {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    sounds[selectedSound](ctx, getVolume());
+    // Play it twice for emphasis
+    setTimeout(() => sounds[selectedSound](ctx, getVolume()), 2200);
+  }
+
+  function testSound() {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    sounds[selectedSound](ctx, getVolume());
+  }
+
+  function selectSound(el) {
+    document.querySelectorAll('.sound-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    selectedSound = el.dataset.sound;
+    testSound();
+  }
+
+  // ── Init ──
+  updateDisplay();
+</script>
+</body>
+</html>
