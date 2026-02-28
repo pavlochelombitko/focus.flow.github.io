@@ -69,10 +69,6 @@ All sounds are synthesized in real-time using the **Web Audio API** — no exter
 
 Zero frameworks. Zero dependencies. Zero build steps.
 
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
 ## 🤝 Support
 
 If you find this useful, consider following me on Instagram!
